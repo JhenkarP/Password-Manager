@@ -1,13 +1,16 @@
-import { Key, Plus, RefreshCw, Settings, Shield, User, LogOut } from "lucide-react";
+import { Key, Plus, RefreshCw, Settings, Shield, ShieldAlert, User, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CredentialCard from "../components/CredentialCard";
 import CredentialModal from "../components/CredentialModal";
 import PasswordGenerator from "../components/PasswordGenerator";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const [credentials, setCredentials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState("credentials");
@@ -20,7 +23,7 @@ export default function Dashboard() {
     try {
       const { data } = await axios.get("/api/credentials/me");
       setCredentials(data);
-    } catch (_) {}
+    } catch {}
     setLoading(false);
   };
 
@@ -42,11 +45,15 @@ export default function Dashboard() {
 
   const del = async id => {
     if (!window.confirm("Delete credential?")) return;
-    // (backend delete endpoint pending)
     setCredentials(credentials.filter(c => c.id !== id));
   };
 
-  const filtered = credentials.filter(c => c.serviceName.toLowerCase().includes(search.toLowerCase()) || c.username.toLowerCase().includes(search.toLowerCase()));
+  const filtered = credentials.filter(
+    c =>
+      c.serviceName.toLowerCase().includes(search.toLowerCase()) ||
+      c.username.toLowerCase().includes(search.toLowerCase())
+  );
+
   const stats = [
     { label: "Total Passwords", value: credentials.length },
     { label: "Weak (<12 chars)", value: credentials.filter(c => c.password.length < 12).length },
@@ -56,12 +63,12 @@ export default function Dashboard() {
   const nav = [
     ["credentials", "My Passwords", Key],
     ["generator", "Generator", RefreshCw],
-    ["settings", "Settings", Settings]
+    ["settings", "Settings", Settings],
+    ...(user.isAdmin ? [["admin", "Admin", ShieldAlert]] : [])
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* sidebar */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
         <div className="flex flex-col h-full">
           <div className="flex items-center space-x-3 p-6 border-b">
@@ -78,7 +85,10 @@ export default function Dashboard() {
             {nav.map(([id, label, Icon]) => (
               <button
                 key={id}
-                onClick={() => setActive(id)}
+                onClick={() => {
+                  if (id === "admin") navigate("/admin");
+                  else setActive(id);
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
                   active === id ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600" : "text-gray-600 hover:bg-gray-50"
                 }`}
@@ -96,10 +106,10 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">{user.username}</p>
-                  <p className="text-xs text-gray-600">Free Plan</p>
+                  <p className="text-xs text-gray-600">{user.isAdmin ? "Admin" : "Free Plan"}</p>
                 </div>
               </div>
-              <button onClick={logout} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Logout">
+              <button onClick={logout} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
@@ -107,7 +117,6 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* content */}
       <main className="ml-64 p-8">
         {active === "credentials" && (
           <>
@@ -116,12 +125,23 @@ export default function Dashboard() {
                 <h1 className="text-2xl font-bold">My Passwords</h1>
                 <p className="text-gray-600">Manage your saved credentials</p>
               </div>
-              <button onClick={() => { setEdit(null); setModal(true); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  setEdit(null);
+                  setModal(true);
+                }}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center space-x-2"
+              >
                 <Plus className="w-4 h-4" /> <span>Add</span>
               </button>
             </div>
 
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="w-full max-w-md mb-6 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="w-full max-w-md mb-6 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {stats.map(s => (
@@ -139,7 +159,15 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filtered.map(c => (
-                  <CredentialCard key={c.id} credential={c} onEdit={cred => { setEdit(cred); setModal(true); }} onDelete={del} />
+                  <CredentialCard
+                    key={c.id}
+                    credential={c}
+                    onEdit={cred => {
+                      setEdit(cred);
+                      setModal(true);
+                    }}
+                    onDelete={del}
+                  />
                 ))}
               </div>
             )}

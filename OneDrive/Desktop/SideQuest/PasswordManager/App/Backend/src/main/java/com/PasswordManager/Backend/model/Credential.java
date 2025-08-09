@@ -1,9 +1,13 @@
 package com.PasswordManager.Backend.model;
 
+import com.PasswordManager.Backend.util.PwdStrengthUtil;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+
+import java.util.List;
 
 @Entity
 @Getter
@@ -17,6 +21,12 @@ public class Credential extends Audit {
     private String serviceName;
     private String username;
     private String password;
+
+    @Transient
+    @JsonProperty("pswdStrength")
+    public List<String> getPswdStrength() {
+        return PwdStrengthUtil.analyze(password);
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

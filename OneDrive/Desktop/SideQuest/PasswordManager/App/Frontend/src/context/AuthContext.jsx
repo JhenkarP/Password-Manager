@@ -1,55 +1,84 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+// src/context/AuthContext.jsx
+// src/context/AuthContext.jsx
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { setAuth, clearAuth, api } from "../services/api";
+import {
+  loginRequest,
+  registerRequest,
+  fetchRole,
+  logoutRequest,
+} from "../services/userService";
 
-axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+const AuthContext = createContext(null);
+export const useAuth = () => useContext(AuthContext);
 
-const AuthContext = createContext();
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be inside <AuthProvider>");
-  return ctx;
-};
-
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const fetchRole = async (username, password) => {
-    const { data } = await axios.get("/api/user/me", {
-      auth: { username, password },
-    });
-    return data.role;
-  };
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    (async () => {
-      const saved = localStorage.getItem("auth");
-      if (!saved) return setLoading(false);
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    const username = localStorage.getItem("username");
 
-      const creds = JSON.parse(saved);
+    if (loggedInUser !== "true" || !username) {
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
       try {
-        const role = await fetchRole(creds.username, creds.password);
-        axios.defaults.auth = creds;
-        setUser({ ...creds, role, isAdmin: role === "ROLE_ADMIN" });
-      } catch {
-        localStorage.removeItem("auth");
+        const res = await api.post("/api/user/refresh");
+        const { token, refreshToken } = res.data;
+
+        setAuth(token);
+        console.log("🔁 Refreshed AccessToken:", token);
+        if (refreshToken) {
+          console.log("📦 Existing RefreshToken:", refreshToken);
+        }
+
+        const role = await fetchRole();
+        setUser({ username, role, isAdmin: role === "ROLE_ADMIN" });
+
+        const lastPath = localStorage.getItem("lastPath");
+        if (location.pathname === "/login" || location.pathname === "/") {
+          navigate(lastPath || "/dashboard", { replace: true });
+        }
+      } catch (err) {
+        clearAuth();
+        setUser(null);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [navigate, location.pathname]);
 
   const login = async (username, password) => {
     try {
-      await axios.get("/api/user/hello", { auth: { username, password } });
-      const role = await fetchRole(username, password);
+      const res = await loginRequest(username, password);
+      const token = res.token;
+      const refreshToken = res.refreshToken;
 
-      const authObj = { username, password };
-      localStorage.setItem("auth", JSON.stringify(authObj));
-      axios.defaults.auth = authObj;
-      setUser({ ...authObj, role, isAdmin: role === "ROLE_ADMIN" });
+      setAuth(token);
+      console.log("🔐 AccessToken after login:", token);
+      if (refreshToken) {
+        console.log("📦 Login RefreshToken:", refreshToken);
+      }
 
-      return { success: true };
+      localStorage.setItem("loggedInUser", "true");
+      localStorage.setItem("username", username);
+
+      const role = await fetchRole();
+      setUser({ username, role, isAdmin: role === "ROLE_ADMIN" });
+
+      return { success: true, message: "Logged in successfully" };
     } catch (err) {
       return {
         success: false,
@@ -61,11 +90,8 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, password) => {
     try {
-      const { data } = await axios.post("/api/user/register", {
-        username,
-        password,
-      });
-      return { success: true, message: data };
+      const msg = await registerRequest(username, password);
+      return { success: true, message: msg };
     } catch (err) {
       return {
         success: false,
@@ -74,15 +100,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("auth");
-    delete axios.defaults.auth;
+  const logout = async () => {
+    try {
+      await logoutRequest();
+    } catch (e) {
+      console.warn("⚠️ Backend logout failed or already logged out");
+    }
+
+    clearAuth();
     setUser(null);
+    localStorage.removeItem("lastPath");
+    navigate("/login", { replace: true });
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, setUser, loading, login, register, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
-};
+}

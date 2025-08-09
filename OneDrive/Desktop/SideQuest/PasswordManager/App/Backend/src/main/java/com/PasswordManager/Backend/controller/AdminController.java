@@ -30,6 +30,7 @@ public class AdminController {
     @PostMapping("/add-user")
     public ResponseEntity<User> createUser(@RequestBody User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setRole("ROLE_USER");
         User savedUser = userService.save(user);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
@@ -40,4 +41,18 @@ public class AdminController {
         return ResponseEntity.ok("User deleted successfully.");
 
     }
+
+    @DeleteMapping("/delete-credential/{userId}/{credId}")
+    public ResponseEntity<String> deleteCredentialFromUser(
+            @PathVariable Long userId,
+            @PathVariable Long credId) {
+        boolean deleted = userService.deleteCredentialFromUser(userId, credId);
+        if (deleted) {
+            return ResponseEntity.ok("Credential deleted successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Credential not found or not associated with user.");
+        }
+    }
+
 }

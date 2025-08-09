@@ -1,13 +1,12 @@
 package com.PasswordManager.Backend.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Data
@@ -29,8 +28,13 @@ public class User {
     @Column(nullable = false)
     private String role;
 
-    /** All credentials that belong to this user */
+    @Column(length = 500)
+    private String refreshToken;
+
+    @Column(name = "token_issued_at")
+    private Long tokenIssuedAt;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference // pairs with @JsonBackReference in Credential
+    @JsonManagedReference
     private List<Credential> credentials = new ArrayList<>();
 }

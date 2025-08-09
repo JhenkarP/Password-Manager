@@ -1,13 +1,11 @@
 package com.PasswordManager.Backend.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
 import com.PasswordManager.Backend.model.Credential;
 import com.PasswordManager.Backend.service.CredentialService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -23,25 +21,28 @@ public class CredentialController {
 
     @PostMapping("/add")
     public ResponseEntity<Credential> addCredential(@RequestBody Credential credential) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        Credential savedCredential = credentialService.addCredential(credential, username);
-        return new ResponseEntity<>(savedCredential, HttpStatus.CREATED);
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Credential saved = credentialService.addCredential(credential, username);
+        return new ResponseEntity<>(saved, HttpStatus.CREATED);
     }
 
     @PutMapping("/change")
     public ResponseEntity<Credential> changeCredential(@RequestBody Credential credential) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String owner = auth.getName();
-        Credential updated = credentialService.changeCredential(credential, owner);
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Credential updated = credentialService.changeCredential(credential, username);
         return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/me")
     public ResponseEntity<List<Credential>> getUserCredentials() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        List<Credential> credentials = credentialService.getUserCredentials(username);
-        return ResponseEntity.ok(credentials);
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(credentialService.getUserCredentials(username));
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteCredential(@PathVariable Long id) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        credentialService.deleteCredential(id, username);
+        return ResponseEntity.noContent().build();
     }
 }

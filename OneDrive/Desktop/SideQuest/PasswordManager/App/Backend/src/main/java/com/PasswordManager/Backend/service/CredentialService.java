@@ -1,15 +1,14 @@
 package com.PasswordManager.Backend.service;
 
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.PasswordManager.Backend.model.Credential;
 import com.PasswordManager.Backend.model.User;
 import com.PasswordManager.Backend.repository.CredentialRepository;
 import com.PasswordManager.Backend.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CredentialService {
@@ -24,15 +23,12 @@ public class CredentialService {
 
     public Credential addCredential(Credential credential, String username) {
         User user = getUserOrThrow(username);
-
-        // Prevent duplicate service names per user
-        Optional<Credential> existing = credentialRepository.findByUserAndServiceName(user,
-                credential.getServiceName());
-        if (existing.isPresent()) {
+        Optional<Credential> dup = credentialRepository.findByUserAndServiceName(user, credential.getServiceName());
+        if (dup.isPresent())
             throw new RuntimeException("Credential already exists for this site.");
-        }
 
         credential.setUser(user);
+        // removed: credential.setPswdStrength(...)
         return credentialRepository.save(credential);
     }
 
@@ -40,32 +36,25 @@ public class CredentialService {
     public Credential changeCredential(Credential req, String username) {
         Credential credential = credentialRepository.findById(req.getId())
                 .orElseThrow(() -> new RuntimeException("Credential not found"));
-
-        if (!credential.getUser().getUsername().equals(username)) {
+        if (!credential.getUser().getUsername().equals(username))
             throw new RuntimeException("Unauthorized: You can only update your own credentials");
-        }
 
+        credential.setServiceName(req.getServiceName());
         credential.setUsername(req.getUsername());
         credential.setPassword(req.getPassword());
-
+        // removed: credential.setPswdStrength(...)
         return credential;
     }
 
     public List<Credential> getUserCredentials(String username) {
-        User user = getUserOrThrow(username);
-        return credentialRepository.findByUser(user);
+        return credentialRepository.findByUser(getUserOrThrow(username));
     }
 
     public void deleteCredential(Long credentialId, String username) {
-        User user = getUserOrThrow(username);
-
         Credential credential = credentialRepository.findById(credentialId)
                 .orElseThrow(() -> new RuntimeException("Credential not found"));
-
-        if (!credential.getUser().getId().equals(user.getId())) {
+        if (!credential.getUser().getUsername().equals(username))
             throw new RuntimeException("Unauthorized: You can only delete your own credentials");
-        }
-
         credentialRepository.delete(credential);
     }
 

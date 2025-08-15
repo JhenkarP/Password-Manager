@@ -61,6 +61,7 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    @SuppressWarnings("deprecation")
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -69,6 +70,7 @@ public class SecurityConfig {
         return provider;
     }
 
+    @SuppressWarnings("removal")
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http

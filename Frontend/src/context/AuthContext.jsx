@@ -1,5 +1,4 @@
 // src/context/AuthContext.jsx
-// src/context/AuthContext.jsx
 import {
   createContext,
   useContext,
